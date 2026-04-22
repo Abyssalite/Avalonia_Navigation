@@ -6,8 +6,7 @@ public interface IViewHost
     object? MainView { get; set; }
     object? TopBar { get; set; }
 
-    Task NavigateSide(object? viewModel);
-    Task NavigateMain(object? viewModel);
-    Task ChangeTopBar(object? viewModel);
+    Task NavigateSide(object? content);
+    Task NavigateMain(object? content);
+    Task ChangeTopBar(object? content);
 }
-

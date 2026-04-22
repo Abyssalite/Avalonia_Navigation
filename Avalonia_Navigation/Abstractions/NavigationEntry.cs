@@ -1,1 +1,3 @@
-public sealed record NavigationEntry(object? ViewModel, object? TopBar = null);
+namespace Avalonia_Navigation;
+
+public sealed record NavigationEntry(object? Content, object? TopBar = null);

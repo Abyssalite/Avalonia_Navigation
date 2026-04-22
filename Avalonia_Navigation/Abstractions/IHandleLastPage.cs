@@ -3,9 +3,7 @@ namespace Avalonia_Navigation;
 public interface IHandleLastPage
 {
     /// <summary>
-    /// Returns true if the back action was handled by the current view model
-    /// and navigation should stop.
-    /// Returns false if navigator should continue normal back navigation.
+    /// Trigger a task when the nagivation reach the last page in stack
     /// </summary>
     Task HandleLastPageAsync();
 }

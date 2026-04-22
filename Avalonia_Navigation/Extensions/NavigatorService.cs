@@ -1,16 +1,15 @@
 namespace Avalonia_Navigation;
 
-public sealed class NavigatorService : INavigatorService
+public class NavigatorService : INavigatorService
 {
     private readonly IViewHost _host;
-    private bool _isExit;
 
-    private readonly Stack<object?> _sideHistory = new();
-    private readonly Stack<NavigationEntry> _mainHistory = new();
+    private readonly Stack<object?> _sideStack = new();
+    private readonly Stack<NavigationEntry> _mainStack = new();
 
     private object? _currentSide;
-    private object? _currentMain;
-    private object? _currentTopBar;
+    private NavigationEntry? _currentMain;
+    private bool _isExit;
 
     public NavigationEntry? FirstView { get; set; }
 
@@ -19,29 +18,58 @@ public sealed class NavigatorService : INavigatorService
         _host = host;
     }
 
-    public async Task NavigateSide(object? viewModel)
+    public async Task NavigateSide(object? content)
     {
         _isExit = false;
 
-        if (_currentSide != null)
-            _sideHistory.Push(_currentSide);
+        if (_currentSide is not null)
+            _sideStack.Push(_currentSide);
 
-        _currentSide = viewModel;
-        await _host.NavigateSide(_currentSide);
+        _currentSide = content;
+        await _host.NavigateSide(content);
     }
 
-    public async Task NavigateMain(NavigationEntry view)
+    public async Task NavigateMain(NavigationEntry entry)
     {
         _isExit = false;
 
-        if (_currentMain != null)
-            _mainHistory.Push(new NavigationEntry(_currentMain, _currentTopBar));
+        if (_currentMain is not null)
+            _mainStack.Push(_currentMain);
 
-        _currentMain = view.ViewModel;
-        _currentTopBar = view.TopBar;
+        _currentMain = entry;
 
-        await _host.ChangeTopBar(_currentTopBar);
-        await _host.NavigateMain(_currentMain);
+        await _host.ChangeTopBar(entry.TopBar);
+        await _host.NavigateMain(entry.Content);
+    }
+
+    public async Task OpenPrevious()
+    {
+        if (_currentMain?.Content is IHandleBackNavigation backHandler)
+        {
+            var handled = await backHandler.HandleBackAsync();
+            if (handled)
+                return;
+        }
+
+        if (_mainStack.Count > 0)
+        {
+            var previous = _mainStack.Pop();
+            _currentMain = previous;
+
+            await _host.ChangeTopBar(previous.TopBar);
+            await _host.NavigateMain(previous.Content);
+
+            if (previous.Content is IHandleLastPage lastPage && _mainStack.Count == 0)
+                await lastPage.HandleLastPageAsync();
+        }
+    }
+
+    public void ClearStack()
+    {
+        _mainStack.Clear();
+
+        if (FirstView is not null)
+            _currentMain = FirstView;
     }
 
     public bool IsExit()
@@ -49,48 +77,12 @@ public sealed class NavigatorService : INavigatorService
         if (_isExit)
             return true;
 
-        if (_mainHistory.Count == 0)
+        if (_mainStack.Count == 0)
+        {
             _isExit = true;
+            return false;
+        }
 
         return false;
-    }
-
-    public void ClearStack()
-    {
-        if (_mainHistory.Count > 0 && FirstView is not null)
-        {
-            _currentMain = FirstView.ViewModel;
-            _currentTopBar = FirstView.TopBar;
-            _mainHistory.Clear();
-        }
-    }
-
-    public async Task OpenPrevious()
-    {
-        if (_currentMain is IHandleBackNavigation backHandler)
-        {
-            var handled = await backHandler.HandleBackAsync();
-            if (handled)
-                return;
-        }
-
-        if (_mainHistory.Count > 0)
-        {
-            var previous = _mainHistory.Pop();
-            _currentMain = previous.ViewModel;
-            _currentTopBar = previous.TopBar;
-
-            await _host.NavigateMain(_currentMain);
-            await _host.ChangeTopBar(_currentTopBar);
-
-            if (_currentMain is IHandleLastPage lastHandler && _mainHistory.Count == 0)
-                await lastHandler.HandleLastPageAsync();
-        }
-
-        if (_sideHistory.Count > 0)
-        {
-            _currentSide = _sideHistory.Pop();
-            await _host.NavigateSide(_currentSide);
-        }
     }
 }

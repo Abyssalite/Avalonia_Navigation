@@ -1,71 +1,33 @@
-using System.ComponentModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace Avalonia_Navigation;
 
-public sealed class ViewHost : IViewHost, INotifyPropertyChanged
+public partial class ViewHost : ObservableObject, IViewHost
 {
-    private object? _sideView;
-    private object? _mainView;
-    private object? _topBar;
+    [ObservableProperty]
+    private object? sideView;
 
-    public object? SideView
-    {
-        get => _sideView;
-        set
-        {
-            if (!ReferenceEquals(_sideView, value))
-            {
-                _sideView = value;
-                OnPropertyChanged(nameof(SideView));
-            }
-        }
-    }
+    [ObservableProperty]
+    private object? mainView;
 
-    public object? MainView
-    {
-        get => _mainView;
-        set
-        {
-            if (!ReferenceEquals(_mainView, value))
-            {
-                _mainView = value;
-                OnPropertyChanged(nameof(MainView));
-            }
-        }
-    }
+    [ObservableProperty]
+    private object? topBar;
 
-    public object? TopBar
+    public Task NavigateSide(object? content)
     {
-        get => _topBar;
-        set
-        {
-            if (!ReferenceEquals(_topBar, value))
-            {
-                _topBar = value;
-                OnPropertyChanged(nameof(TopBar));
-            }
-        }
-    }
-
-    public Task NavigateSide(object? viewModel)
-    {
-        SideView = viewModel;
+        SideView = content;
         return Task.CompletedTask;
     }
 
-    public Task NavigateMain(object? viewModel)
+    public Task NavigateMain(object? content)
     {
-        MainView = viewModel;
+        MainView = content;
         return Task.CompletedTask;
     }
 
-    public Task ChangeTopBar(object? viewModel)
+    public Task ChangeTopBar(object? content)
     {
-        TopBar = viewModel;
+        TopBar = content;
         return Task.CompletedTask;
     }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    private void OnPropertyChanged(string propertyName) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
