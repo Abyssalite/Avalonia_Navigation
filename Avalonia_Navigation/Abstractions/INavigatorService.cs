@@ -2,12 +2,15 @@ namespace Avalonia_Navigation;
 
 public interface INavigatorService
 {
-    NavigationEntry? FirstView { get; set; }
+    NavigationState? FirstView { get; set; }
 
-    Task NavigateSide(object? content);
-    Task NavigateMain(NavigationEntry entry);
+    Task NavigateMain(object? main);
+    Task NavigateSide(object? side);
+    Task ChangeTopBar(object? topBar);
+    Task NavigateMainAndTop(object? main, object? topBar);
+    Task Navigate(NavigationState state);
     Task OpenPrevious();
 
-    void ClearStack();
+    Task ClearStack();
     bool IsExit();
 }

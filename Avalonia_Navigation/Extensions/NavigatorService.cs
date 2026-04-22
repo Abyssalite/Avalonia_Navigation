@@ -3,81 +3,119 @@ namespace Avalonia_Navigation;
 public class NavigatorService : INavigatorService
 {
     private readonly IViewHost _host;
-
-    private readonly Stack<object?> _sideStack = new();
-    private readonly Stack<NavigationEntry> _mainStack = new();
-
-    private object? _currentSide;
-    private NavigationEntry? _currentMain;
+    private readonly Stack<NavigationState> _history = new();
+    private NavigationState? _current;
     private bool _isExit;
 
-    public NavigationEntry? FirstView { get; set; }
+    public NavigationState? FirstView { get; set; }
 
     public NavigatorService(IViewHost host)
     {
         _host = host;
     }
 
-    public async Task NavigateSide(object? content)
+    private async void switchPage(object? TopBar, object? SideContent, object? MainContent, NavigationState? last)
     {
-        _isExit = false;
 
-        if (_currentSide is not null)
-            _sideStack.Push(_currentSide);
+        if (TopBar is not null && !TopBar.Equals(last?.TopBar))
+            await _host.ChangeTopBar(TopBar);
 
-        _currentSide = content;
-        await _host.NavigateSide(content);
+        if (SideContent is not null && !SideContent.Equals(last?.SideContent))
+            await _host.NavigateSide(SideContent);
+
+        if (MainContent is not null && !MainContent.Equals(last?.MainContent))
+            await _host.NavigateMain(MainContent);
     }
 
-    public async Task NavigateMain(NavigationEntry entry)
+    public async Task Navigate(NavigationState state)
     {
-        _isExit = false;
+        NavigationState? last = _current;
+        if (_current is not null)
+            _history.Push(_current);
 
-        if (_currentMain is not null)
-            _mainStack.Push(_currentMain);
+        
 
-        _currentMain = entry;
+        _current = state;
 
-        await _host.ChangeTopBar(entry.TopBar);
-        await _host.NavigateMain(entry.Content);
+        switchPage(_current.TopBar, _current.SideContent, _current.MainContent, last);
     }
+
+    public Task NavigateMain(object? main) =>
+        Navigate(new NavigationState(
+            main,
+            _current?.SideContent,
+            _current?.TopBar
+        ));
+
+    public Task NavigateSide(object? side) =>
+        Navigate(new NavigationState(
+            _current?.MainContent,
+            side,
+            _current?.TopBar
+        ));
+
+    public Task ChangeTopBar(object? topBar) =>
+        Navigate(new NavigationState(
+            _current?.MainContent,
+            _current?.SideContent,
+            topBar
+        ));
+
+    public Task NavigateMainAndTop(object? main, object? topBar) =>
+        Navigate(new NavigationState(
+            main,
+            _current?.SideContent,
+            topBar
+        ));
 
     public async Task OpenPrevious()
     {
-        if (_currentMain?.Content is IHandleBackNavigation backHandler)
+        if (_current is null)
+            throw new Exception("Cannot Back on empty page");
+
+        if (_current.MainContent is IHandleBackNavigation backHandler)
         {
             var handled = await backHandler.HandleBackAsync();
             if (handled)
                 return;
         }
 
-        if (_mainStack.Count > 0)
+        if (_history.Count > 0)
         {
-            var previous = _mainStack.Pop();
-            _currentMain = previous;
+            NavigationState? last = _current;
 
-            await _host.ChangeTopBar(previous.TopBar);
-            await _host.NavigateMain(previous.Content);
-
-            if (previous.Content is IHandleLastPage lastPage && _mainStack.Count == 0)
+            if (_current.MainContent is IHandleLastPage lastPage && _history.Count == 0)
                 await lastPage.HandleLastPageAsync();
+
+            _current = _history.Pop();
+
+            switchPage(_current.TopBar, _current.SideContent, _current.MainContent, last);
         }
     }
 
-    public void ClearStack()
-    {
-        _mainStack.Clear();
+public async Task ClearStack()
+{
+    _history.Clear();
 
-        if (FirstView is not null)
-            _currentMain = FirstView;
-    }
+    if (FirstView is null)
+        throw new Exception("First view was not set");
+
+    NavigationState? last = _current;
+    _current = new NavigationState(
+        FirstView.MainContent,
+        _current?.SideContent,
+        FirstView.TopBar
+    );
+
+    switchPage(_current.TopBar, _current.SideContent, _current.MainContent, last);
+}
 
     public bool IsExit()
     {
         if (_isExit)
             return true;
 
-        if (_mainStack.Count == 0)
+        if (_history.Count == 0)
         {
             _isExit = true;
             return false;
