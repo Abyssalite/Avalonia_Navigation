@@ -15,7 +15,8 @@ public class NavigatorService : INavigatorService
     }
 
     private async void switchPage(object? TopBar, object? SideContent, object? MainContent, NavigationState? last)
-    {
+    {   
+        _isExit = false;
 
         if (TopBar is not null && !TopBar.Equals(last?.TopBar))
             await _host.ChangeTopBar(TopBar);
