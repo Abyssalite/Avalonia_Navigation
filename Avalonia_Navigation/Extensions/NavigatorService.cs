@@ -3,15 +3,18 @@ namespace Avalonia_Navigation;
 public class NavigatorService : INavigatorService
 {
     private readonly IViewHost _host;
+    private readonly ITabView _tabs;
+
     private readonly Stack<NavigationState> _history = new();
     private NavigationState? _current;
     private bool _isExit;
 
     public NavigationState? FirstView { get; set; }
 
-    public NavigatorService(IViewHost host)
+    public NavigatorService(IViewHost host, ITabView tabs)
     {
         _host = host;
+        _tabs = tabs;
     }
 
     private async void switchPage(object? TopBar, object? SideContent, object? MainContent, NavigationState? last)
@@ -33,8 +36,6 @@ public class NavigatorService : INavigatorService
         NavigationState? last = _current;
         if (_current is not null)
             _history.Push(_current);
-
-        
 
         _current = state;
 
@@ -91,6 +92,7 @@ public class NavigatorService : INavigatorService
             _current = _history.Pop();
 
             switchPage(_current.TopBar, _current.SideContent, _current.MainContent, last);
+            await _tabs.clearTab();
         }
     }
 

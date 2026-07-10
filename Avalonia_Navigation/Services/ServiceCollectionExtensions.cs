@@ -8,6 +8,8 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IViewHost, ViewHost>();
         services.AddSingleton<INavigatorService, NavigatorService>();
+        services.AddSingleton<ITabView, TabView>();
+
         return services;
     }
 }
